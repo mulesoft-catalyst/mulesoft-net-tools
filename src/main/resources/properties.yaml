@@ -3,5 +3,7 @@ user: "vpc-tools"
 pass: "SomePass"
 httpPort: "8081"
 httpsPort: "8082"
+
 httpListener: "started"
 ignoreFiles: "favicon.ico" # comma-delimited list of resource files to ignore
+jdbc.driver: "com.microsoft.sqlserver.jdbc.SQLServerDriver" #MS SQL Server Driver class

@@ -13,7 +13,7 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<app.runtime>4.6.0</app.runtime>
-		<mule.maven.plugin.version>4.2.0</mule.maven.plugin.version>
+		<mule.maven.plugin.version>4.3.0</mule.maven.plugin.version>
 		<spring.version>5.3.37</spring.version>
 		<spring-security.version>5.8.13</spring-security.version>
 	</properties>
@@ -46,6 +46,14 @@
 						<sharedLibrary>
 							<groupId>org.springframework</groupId>
 							<artifactId>spring-core</artifactId>
+						</sharedLibrary>
+						<sharedLibrary>
+							<groupId>com.microsoft.sqlserver</groupId>
+							<artifactId>mssql-jdbc</artifactId>
+						</sharedLibrary>
+						<sharedLibrary>
+							<groupId>com.microsoft.azure</groupId>
+							<artifactId>msal4j</artifactId>
 						</sharedLibrary>
 					</sharedLibraries>
 					<classifier>mule-application</classifier>
@@ -83,20 +91,36 @@
 		<dependency>
 			<groupId>org.mule.modules</groupId>
 			<artifactId>mule-apikit-module</artifactId>
-			<version>1.10.4</version>
+			<version>1.11.7</version>
 			<classifier>mule-plugin</classifier>
 		</dependency>
 		<dependency>
 			<groupId>org.mule.connectors</groupId>
 			<artifactId>mule-http-connector</artifactId>
-			<version>1.9.3</version>
+			<version>1.10.5</version>
 			<classifier>mule-plugin</classifier>
 		</dependency>
 		<dependency>
 			<groupId>org.mule.modules</groupId>
 			<artifactId>mule-spring-module</artifactId>
-			<version>1.4.0</version>
+			<version>2.1.0</version>
 			<classifier>mule-plugin</classifier>
+		</dependency>
+		<dependency>
+			<groupId>org.mule.connectors</groupId>
+			<artifactId>mule-db-connector</artifactId>
+			<version>1.14.17</version>
+			<classifier>mule-plugin</classifier>
+		</dependency>
+		<dependency>
+			<groupId>com.microsoft.sqlserver</groupId>
+			<artifactId>mssql-jdbc</artifactId>
+			<version>13.2.0.jre11</version>
+		</dependency>
+		<dependency>
+			<groupId>com.microsoft.azure</groupId>
+			<artifactId>msal4j</artifactId>
+			<version>1.11.3</version>
 		</dependency>
 	</dependencies>
 

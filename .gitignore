@@ -22,5 +22,7 @@ bin/
 .mule
 target/*
 .vscode/
+src/main/resources/application-types.xml
+src/main/resources/weave/
 
 .tooling-project

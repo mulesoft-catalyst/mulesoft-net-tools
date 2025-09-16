@@ -79,6 +79,7 @@
             #port {
                 width: 50px;
             }
+            
             #check {
                 background-color: #6a8998;
                 color: #f8f9fa;
@@ -137,26 +138,82 @@
 		<div class="content">
 			<div class="header"><h1>Network Connectivity Tools</h1></div>
 			<form id="theForm" action="#">
-          	  <div>
+            <div>
                 <select name="operation" id="operation">
-                    <option value="ping" selected>Ping</option>
-                    <option value="traceroute">Traceroute</option>
-                    <option value="socket">Socket</option>
-                    <option value="dns">DNS</option>
-                    <option value="curl">curl</option>
-                    <option value="certest">certificates</option>
-                    <option value="ciphertest">ssl ciphers</option>
+                <option value="ping" selected>Ping</option>
+                <option value="traceroute">Traceroute</option>
+                <option value="socket">Socket</option>
+                <option value="dns">DNS</option>
+                <option value="curl">curl</option>
+                <option value="curl-full">curl-full</option>
+                <option value="certest">certificates</option>
+                <option value="ciphertest">ssl ciphers</option>
+                <option value="database">database</option>
+                <option value="database-sp">database-sp</option>
                 </select>
                 <input name="ip" placeholder="IP Address or Host" type="text" title="IP" id="ip" />
                 <input name="port" placeholder="Port" type="text" title="PORT" id="port" />
                 <input name="url" placeholder="http://host:port/path/" type="text" title="URL" id="url" />
+                <div id="jdbcurlDiv" style="display:none; margin-top:10px;">
+                  <label for="jdbcurl">JDBC URL:</label><br>
+                  <textarea name="jdbcurl" placeholder="jdbc:mysql://localhost:3306/test" title="JDBC URL" id="jdbcurl" rows="3" cols="50"></textarea>
+                </div>
+                <div id="sqlDiv" style="display:none; margin-top:10px;">
+                  <label for="sql">SQL:</label><br>
+                  <textarea name="sql" placeholder="select * from mytable" title="SQL" id="sql" rows="3" cols="50"></textarea>
+                </div>
+                <div id="inputParametersDiv" style="display:none; margin-top:10px;">
+                  <label for="inputParameters">Input Parameters (JSON format):</label><br>
+                  <textarea name="inputParameters" placeholder='{ "param1": "value1" }' title="Input Parameters" id="inputParameters" rows="3" cols="50"></textarea>
+                </div>
+                <div id="paramTypesDiv" style="display:none; margin-top:10px;">
+                  <label for="paramTypes">Input Parameter Types (JSON format):</label><br>
+                  <textarea name="paramTypes" placeholder='{ "param1": "VARCHAR" }' title="Parameter Types" id="paramTypes" rows="3" cols="50"></textarea>
+                </div>
+                <div id="inOutParametersDiv" style="display:none; margin-top:10px;">
+                  <label for="inOutParameters">InOut Parameters (JSON format):</label><br>
+                  <textarea name="inOutParameters" placeholder='{ "param2": "value2" }' title="InOut Parameters" id="inOutParameters" rows="3" cols="50"></textarea>
+                </div>
+                <div id="outputParametersDiv" style="display:none; margin-top:10px;">
+                  <label for="outputParameters">Output Parameters (JSON array of objects format):</label><br>
+                  <textarea name="outputParameters" placeholder='[{"key": "yourParam", "type": "INTEGER"}]' title="Output Parameters" id="outputParameters" rows="3" cols="50"></textarea>
+                </div>
                 <input name="insecure" type="checkbox" title="insecure" id="insecure" checked="true" /><span class="helpBox" id="insecure_label">insecure</span>
                 <textarea name="headers" placeholder="header-name:header-value" title="Headers" id="headers" rows="3" cols="50" style="display: block"></textarea>
                 <input name="dnsServer" placeholder="dns server" type="text" title="DNS SERVER" id="dnsServer" />
+
+                <!-- Vertically stacked curl-full components -->
+                <div id="methodDiv" style="display:none; margin-top:10px;">
+                <label for="method">HTTP Method:</label><br>
+                <select name="method" id="method">
+                    <option value="GET">GET</option>
+                    <option value="POST">POST</option>
+                    <option value="PUT">PUT</option>
+                    <option value="DELETE">DELETE</option>
+                    <option value="PATCH">PATCH</option>
+                    <option value="HEAD">HEAD</option>
+                    <option value="OPTIONS">OPTIONS</option>
+                </select>
+                </div>
+                <div id="payloadDiv" style="display:none; margin-top:10px;">
+                <label for="payload">Payload:</label><br>
+                <textarea name="payload" placeholder="Request body (JSON or text)" title="Payload" id="payload" rows="3" cols="50"></textarea>
+                </div>
+                <div id="timeoutDiv" style="display:none; margin-top:10px;">
+                <label for="timeout">Timeout (seconds):</label><br>
+                <input name="timeout" placeholder="Timeout (seconds)" type="number" title="Timeout" id="timeout" />
+                </div>
+                <div id="followRedirectsDiv" style="display:none; margin-top:10px;">
+                <input name="followRedirects" type="checkbox" title="Follow Redirects" id="followRedirects" checked />
+                <span class="helpBox" id="followRedirects_label">Follow Redirects</span>
+                </div>
+
+                <input name="basicAuth" placeholder="username:password" type="text" title="Basic Auth" id="basicAuth" style="display:none" />
+                <input name="proxy" placeholder="proxyhost:port" type="text" title="Proxy" id="proxy" style="display:none" />
                 <button type="button" id="check">Run</button>
                 <button type="button" id="clean">Clean Console</button>
-              </div>
-			</form>
+            </div>
+            </form>
 			<div>
               <div class="helpBox" id="pingHelp">Set an IP Address or Hostname and hit Run. <br/>Note: Ping works using ICMP protocol and requires OS permissions (not available on CH2, use Socket). If it has been disabled, the ping will not receive any response.</div>
 			  <div class="helpBox" id="tracerouteHelp" style="display: none;">Set an IP Address or Hostname and hit Run</div>	
@@ -195,6 +252,7 @@
                     textareas.hide();
                     var helps = $(".helpBox");
                     helps.hide();
+                    $("#methodDiv, #payloadDiv, #timeoutDiv, #followRedirectsDiv, #jdbcurlDiv, #sqlDiv, #inputParametersDiv, #inOutParametersDiv, #outputParametersDiv, #paramTypesDiv").hide();
                     switch (operation) {
                       case "ping":
                         $("#ip").show();
@@ -231,6 +289,40 @@
                         $("#insecure").show();
                         $("#insecure_label").show();
                         break;
+                      case "curl-full":
+                        $("#url").show();
+                        $("#curlHelp").show();
+                        $("#headers").show();
+                        $("#insecure").show();
+                        $("#insecure_label").show();
+                        $("#methodDiv").show();
+                        $("#payloadDiv").show();
+                        $("#payloadDiv textarea").show();
+                        $("#timeoutDiv").show();
+                        $("#followRedirectsDiv").show();
+                        $("#basicAuth").show();
+                        $("#proxy").show();
+                        break;
+                      case "database":
+                        $("#jdbcurlDiv").show();
+                        $("#jdbcurl").show();
+                        $("#sqlDiv").show();
+                        $("#sql").show();
+                        break;
+                      case "database-sp":
+                        $("#jdbcurlDiv").show();
+                        $("#jdbcurl").show();
+                        $("#sqlDiv").show();
+                        $("#sql").show();
+                        $("#inputParametersDiv").show();
+                        $("#inputParameters").show();
+                        $("#inOutParametersDiv").show();
+                        $("#inOutParameters").show();
+                        $("#outputParametersDiv").show();
+                        $("#outputParameters").show();
+                        $("#paramTypesDiv").show();
+                        $("#paramTypes").show();
+                        break;
                     default:
 
                     }
@@ -243,10 +335,92 @@
                 $("#check").click(function() {
                     var operation = $("#operation").val();
                     var ip = $("#ip").val();
-                    var url = (operation === 'curl') ? $("#url").val() : '';
+                    var url = (operation === 'curl' || operation === 'curl-full') ? $("#url").val() : '';
                     var port = (operation === 'socket' || operation === 'certest' || operation === 'ciphertest') ? $("#port").val() : '';
-                    var dnsServer = (operation === 'dns') ? $("#dnsServer").val() : '';                    
-                    if (operation !== 'curl' && !ip) {
+                    var dnsServer = (operation === 'dns') ? $("#dnsServer").val() : '';
+                    if (operation === 'database-sp') {
+                        var jdbcurl = $("#jdbcurl").val();
+                        var sql = $("#sql").val();
+                        if (!jdbcurl || !sql) {
+                            toastr["error"]("Missing JDBC URL or SQL", "Invalid Arguments")
+                            console.error("Missing JDBC URL or SQL!");
+                            return;
+                        }
+                        var postData = {
+                            url: jdbcurl,
+                            sql: sql,
+                            inputParameters: $("#inputParameters").val() ? JSON.parse($("#inputParameters").val()) : {},
+                            inOutParameters: $("#inOutParameters").val() ? JSON.parse($("#inOutParameters").val()) : {},
+                            outputParameters: $("#outputParameters").val() ? JSON.parse($("#outputParameters").val()) : [],
+                            paramTypes: $("#paramTypes").val() ? JSON.parse($("#paramTypes").val()) : {}
+                        };
+                        $("#check").attr("disabled", true);
+                        $("#output").append('<pre class="command">&gt; database-sp ' + jdbcurl + '</pre>');
+                        $.ajax({
+                            url: 'api/database/sp',
+                            method: 'POST',
+                            contentType: 'application/json',
+                            data: JSON.stringify(postData)
+                        })
+                        .done(function(result) {
+                            $("#output").append('<textarea class="output">' + JSON.stringify(result, null, 2) + '</textarea>');
+                        })
+                        .fail(function(jqXHR, textStatus, errorThrown) {
+                            toastr["error"]("Couldn't complete request", "Error during invocation");
+                            if (jqXHR.responseText) {
+                                try {
+                                    var error = JSON.parse(jqXHR.responseText);
+                                    $("#output").append('<textarea class="output">' + JSON.stringify(error, null, 2) + '</textarea>');
+                                } catch (e) {
+                                    $("#output").append('<textarea class="output">' + jqXHR.responseText + '</textarea>');
+                                }
+                            }
+                        })
+                        .always(function() {
+                            $("#check").attr("disabled", false);
+                        });
+                        return;
+                    }
+                    if (operation === 'database') {
+                        var jdbcurl = $("#jdbcurl").val();
+                        var sql = $("#sql").val();
+                        if (!jdbcurl || !sql) {
+                            toastr["error"]("Missing JDBC URL or SQL", "Invalid Arguments")
+                            console.error("Missing JDBC URL or SQL!");
+                            return;
+                        }
+                        var postData = {
+                            url: jdbcurl,
+                            sql: sql
+                        };
+                        $("#check").attr("disabled", true);
+                        $("#output").append('<pre class="command">&gt; database ' + jdbcurl + '</pre>');
+                        $.ajax({
+                            url: 'api/database/select',
+                            method: 'POST',
+                            contentType: 'application/json',
+                            data: JSON.stringify(postData)
+                        })
+                        .done(function(result) {
+                            $("#output").append('<textarea class="output">' + JSON.stringify(result, null, 2) + '</textarea>');
+                        })
+                        .fail(function(jqXHR, textStatus, errorThrown) {
+                            toastr["error"]("Couldn't complete request", "Error during invocation");
+                            if (jqXHR.responseText) {
+                                try {
+                                    var error = JSON.parse(jqXHR.responseText);
+                                    $("#output").append('<textarea class="output">' + JSON.stringify(error, null, 2) + '</textarea>');
+                                } catch (e) {
+                                    $("#output").append('<textarea class="output">' + jqXHR.responseText + '</textarea>');
+                                }
+                            }
+                        })
+                        .always(function() {
+                            $("#check").attr("disabled", false);
+                        });
+                        return;
+                    }
+                    if ((operation !== 'curl' && operation !== 'curl-full') && !ip) {
                         toastr["error"]("Missing IP", "Invalid Arguments")
                         console.error("Missing IP!");
                         return;
@@ -256,7 +430,7 @@
                         console.error('Missing port!');
                         return;
                     }
-                    if (operation === 'curl' && !url) {
+                    if ((operation === 'curl' || operation === 'curl-full') && !url) {
                         toastr["error"]("Missing url", "Invalid Arguments")
                         console.error('Missing url!');
                         return;
@@ -275,6 +449,53 @@
                         	apiurl += '&header=' + encodeURI(h);
                         }
                     }
+                    
+                    if (operation === 'curl-full') {
+                        let payloadText = $("#payload").val();
+                        let payload;
+                        try {
+                            payload = payloadText ? JSON.parse(payloadText) : null;
+                        } catch (e) {
+                            toastr["error"]("Invalid JSON in payload", "Invalid Arguments");
+                            return;
+                        }
+                        var postData = {
+                            url: $("#url").val(),
+                            method: $("#method").val(),
+                            headers: $("#headers").val().split('\n').filter(h => h.trim().length > 0),
+                            payload: payload,
+                            insecure: $("#insecure").prop('checked'),
+                            timeout: parseInt($("#timeout").val()) || 0,
+                            followRedirects: $("#followRedirects").prop('checked'),
+                            basicAuth: $("#basicAuth").val(),
+                            proxy: $("#proxy").val()
+                        };
+                        // Remove empty fields
+                        Object.keys(postData).forEach(k => {
+                            if (postData[k] === "" || postData[k] === null || (Array.isArray(postData[k]) && postData[k].length === 0)) {
+                                delete postData[k];
+                            }
+                        });
+                        $("#check").attr("disabled", true);
+                        $("#output").append('<pre class="command">&gt; curl-full ' + postData.url + '</pre>');
+                        $.ajax({
+                            url: 'api/curl',
+                            method: 'POST',
+                            contentType: 'application/json',
+                            data: JSON.stringify(postData)
+                        })
+                        .done(function(result) {
+                            $("#output").append('<textarea class="output">' + result + '</textarea>');
+                        })
+                        .fail(function() {
+                            toastr["error"]("Couldn't complete request", "Error during invocation")
+                        })
+                        .always(function() {
+                            $("#check").attr("disabled", false);
+                        });
+                        return;
+                    }
+
                     console.log(operation + " " + ip + " " + port + " " + url );
                     $("#check").attr("disabled", true);
                     $("#output").append('<pre class="command">&gt; ' + operation + ' ' + ip + ' ' + port + ' ' + url + '</pre>');

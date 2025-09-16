@@ -44,21 +44,89 @@ public class NetworkUtils {
 	}
 
 	public static String curl(String url, String[] headers, Boolean insecure) throws IOException {
-		//-i include protocol headers
-		//-L follow redirects
-		//-k insecure
-		//-E cert status
-		List<String> command = new ArrayList<String>();
-		command.add("curl");
-		if(insecure) command.add("-k");
-		command.add("-i");
-		command.add("-L");
-		command.add(url);
-		for (String header : headers ) {
-			command.add("-H");
-			command.add(header);
-		}		
-		return execute(new ProcessBuilder(command));
+	    return curl(url, "GET", headers, null, insecure, 0, true, null, null);
+	}
+	
+	/**
+	 * Executes a cURL command with comprehensive support for HTTP/HTTPS requests
+	 * 
+	 * @param url The URL to send the request to
+	 * @param method The HTTP method (GET, POST, PUT, DELETE, etc.)
+	 * @param headers Array of headers in format "Name: Value"
+	 * @param payload Request body (JSON, XML, etc.) - ignored for GET requests
+	 * @param insecure Whether to skip SSL certificate validation
+	 * @param timeout Connection timeout in seconds (0 for no timeout)
+	 * @param followRedirects Whether to follow HTTP redirects
+	 * @param basicAuth Basic authentication in format "username:password"
+	 * @param proxy Proxy server in format "host:port"
+	 * @return The command execution result as a string
+	 * @throws IOException If an I/O error occurs
+	 */
+	public static String curl(
+	        String url, 
+	        String method, 
+	        String[] headers, 
+	        String payload,
+	        Boolean insecure,
+	        int timeout,
+	        Boolean followRedirects,
+	        String basicAuth,
+	        String proxy) throws IOException {
+	    
+	    List<String> command = new ArrayList<String>();
+	    command.add("curl");
+	    
+	    // Basic options
+	    if (insecure) command.add("-k");
+	    command.add("-i");  // Include protocol headers in output
+	    
+	    // Follow redirects
+	    if (followRedirects != null && followRedirects) {
+	        command.add("-L");
+	    }
+	    
+	    // HTTP method
+	    if (method != null && !method.equalsIgnoreCase("GET")) {
+	        command.add("-X");
+	        command.add(method.toUpperCase());
+	    }
+	    
+	    // Connection timeout
+	    if (timeout > 0) {
+	        command.add("--connect-timeout");
+	        command.add(String.valueOf(timeout));
+	    }
+	    
+	    // Basic authentication
+	    if (basicAuth != null && !basicAuth.isEmpty()) {
+	        command.add("-u");
+	        command.add(basicAuth);
+	    }
+	    
+	    // Proxy
+	    if (proxy != null && !proxy.isEmpty()) {
+	        command.add("--proxy");
+	        command.add(proxy);
+	    }
+	    
+	    // Headers
+	    if (headers != null) {
+	        for (String header : headers) {
+	            command.add("-H");
+	            command.add(header);
+	        }
+	    }
+	    
+	    // Add payload for non-GET requests
+	    if (payload != null && !payload.isEmpty() && !method.equalsIgnoreCase("GET")) {
+	        command.add("-d");
+	        command.add(payload);
+	    }
+	    
+	    // URL (last parameter)
+	    command.add(url);
+	    
+	    return execute(new ProcessBuilder(command));
 	}
 
 	public static String testConnect(String host, String port) {

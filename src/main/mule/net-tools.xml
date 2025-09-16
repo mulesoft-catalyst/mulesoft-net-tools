@@ -77,10 +77,13 @@ http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/
                         <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
-{message: "Bad request"}]]></ee:set-payload>
+{
+	errorType: error.errorType.identifier,
+	message: error.description	
+}]]></ee:set-payload>
                     </ee:message>
                     <ee:variables>
-                        <ee:set-variable variableName="httpStatus">400</ee:set-variable>
+                        <ee:set-variable variableName="httpStatus"><![CDATA[400]]></ee:set-variable>
                     </ee:variables>
                 </ee:transform>
             </on-error-propagate>
@@ -90,10 +93,13 @@ output application/json
                         <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
-{message: "Resource not found"}]]></ee:set-payload>
+{
+	errorType: error.errorType.identifier,
+	message: error.description	
+}]]></ee:set-payload>
                     </ee:message>
                     <ee:variables>
-                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                        <ee:set-variable variableName="httpStatus"><![CDATA[404]]></ee:set-variable>
                     </ee:variables>
                 </ee:transform>
             </on-error-propagate>
@@ -103,10 +109,13 @@ output application/json
                         <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
-{message: "Method not allowed"}]]></ee:set-payload>
+{
+	errorType: error.errorType.identifier,
+	message: error.description	
+}]]></ee:set-payload>
                     </ee:message>
                     <ee:variables>
-                        <ee:set-variable variableName="httpStatus">405</ee:set-variable>
+                        <ee:set-variable variableName="httpStatus"><![CDATA[405]]></ee:set-variable>
                     </ee:variables>
                 </ee:transform>
             </on-error-propagate>
@@ -116,10 +125,13 @@ output application/json
                         <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
-{message: "Not acceptable"}]]></ee:set-payload>
+{
+	errorType: error.errorType.identifier,
+	message: error.description	
+}]]></ee:set-payload>
                     </ee:message>
                     <ee:variables>
-                        <ee:set-variable variableName="httpStatus">406</ee:set-variable>
+                        <ee:set-variable variableName="httpStatus"><![CDATA[406]]></ee:set-variable>
                     </ee:variables>
                 </ee:transform>
             </on-error-propagate>
@@ -129,10 +141,13 @@ output application/json
                         <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
-{message: "Unsupported media type"}]]></ee:set-payload>
+{
+	errorType: error.errorType.identifier,
+	message: error.description	
+}]]></ee:set-payload>
                     </ee:message>
                     <ee:variables>
-                        <ee:set-variable variableName="httpStatus">415</ee:set-variable>
+                        <ee:set-variable variableName="httpStatus"><![CDATA[415]]></ee:set-variable>
                     </ee:variables>
                 </ee:transform>
             </on-error-propagate>
@@ -142,10 +157,13 @@ output application/json
                         <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
-{message: "Not Implemented"}]]></ee:set-payload>
+{
+	errorType: error.errorType.identifier,
+	message: error.description	
+}]]></ee:set-payload>
                     </ee:message>
                     <ee:variables>
-                        <ee:set-variable variableName="httpStatus">501</ee:set-variable>
+                        <ee:set-variable variableName="httpStatus"><![CDATA[501]]></ee:set-variable>
                     </ee:variables>
                 </ee:transform>
             </on-error-propagate>
@@ -158,7 +176,7 @@ output application/json
 output application/java
 import java!com::mulesoft::tool::network::NetworkUtils
 ---
-NetworkUtils::curl(attributes.queryParams.url, attributes.queryParams.*header default [], attributes.queryParams.insecure as Boolean)]]></ee:set-payload>
+NetworkUtils::curl(attributes.queryParams.url, attributes.queryParams.*header default [], (attributes.queryParams.insecure default false) as Boolean)]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
     </flow>
@@ -230,4 +248,43 @@ NetworkUtils::traceRoute(attributes.queryParams.host)]]></ee:set-payload>
             </ee:message>
         </ee:transform>
     </flow>
+	<flow name="post:\curl:net-tools-config" doc:id="5296ba58-a8d1-4ae8-a82a-07e6ab34ccaf" >
+		<ee:transform doc:name="Transform Message" doc:id="c64cfc55-c6e5-4dc8-abf8-abba0bbf45ad" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+import java!com::mulesoft::tool::network::NetworkUtils
+var headersArray = if (payload.headers? and (payload.headers is Array)) 
+                      payload.headers map ((h) -> h as String) 
+                   else 
+                      []
+var payloadString = 
+  if (payload.payload == null) 
+    null 
+  else 
+    write(payload.payload, "application/json")
+---
+NetworkUtils::curl(
+  payload.url,
+  payload.method,
+  headersArray,
+  payloadString,
+  payload.insecure default false,
+  payload.timeout default 0,
+  payload.followRedirects default true,
+  payload.basicAuth default null,
+  payload.proxy default null
+)]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="post:\database\select:application\json:net-tools-config" doc:id="fef1816f-3cf6-445d-a529-2e55ff6bad50" >
+		<flow-ref doc:name="process-database-select" doc:id="2630e257-626b-4fea-a8c9-f4659737fe59" name="process-database-select"/>
+	</flow>
+	<flow name="post:\database\sp:application\json:net-tools-config" doc:id="193060d4-68e5-407d-b0d4-b9e11d60fccc" >
+		<flow-ref doc:name="process-database-sp" doc:id="b7512b6d-3536-4889-ad48-af6bd557592c" name="process-database-sp"/>
+	</flow>
+	<flow name="post:\database\script:application\json:net-tools-config" doc:id="a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d">
+		<flow-ref doc:name="process-database-script" doc:id="d1e2f3a4-b5c6-d7e8-f9a0-b1c2d3e4f5a6" name="process-database-script"/>
+	</flow>
 </mule>

@@ -102,7 +102,179 @@ securitySchemes:
         body: 
           text/plain:
             example: |
-              curl: (7) Failed to connect to 10.200.27.15 port 443: Timed out             
+              curl: (7) Failed to connect to 10.200.27.15 port 443: Timed out
+  post:
+    description: Runs a comprehensive curl request with advanced options from the Mule host to the specified resource
+    body:
+      application/json:
+        type: object
+        properties:
+          url:
+            description: Target URL
+            type: string
+            required: true
+          method:
+            description: HTTP method (GET, POST, PUT, DELETE, PATCH, etc.)
+            type: string
+            required: true
+            enum: [GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS]
+          headers:
+            description: HTTP headers to include in the request
+            type: array
+            items:
+              type: string
+              example: "Content-Type:application/json"
+            required: false
+          payload:
+            description: Request body content (ignored for GET requests)
+            type: any
+            required: false
+            example: {"name":"John","email":"john@example.com"}
+          insecure:
+            description: Skip SSL certificate validation
+            type: boolean
+            required: false
+            default: false
+          timeout:
+            description: Connection timeout in seconds (0 for no timeout)
+            type: integer
+            required: false
+            default: 0
+          followRedirects:
+            description: Whether to follow HTTP redirects
+            type: boolean
+            required: false
+            default: true
+          basicAuth:
+            description: Basic authentication credentials in format "username:password"
+            type: string
+            required: false
+            example: "admin:password123"
+          proxy:
+            description: Proxy server in format "host:port"
+            type: string
+            required: false
+            example: "proxy.example.com:8080"
+    responses:
+      200:
+        body:
+          text/plain:
+            description: The full response including headers and body
+            example: |
+              HTTP/1.1 201 Created
+              Date: Mon, 12 Jun 2023 15:30:22 GMT
+              Content-Type: application/json
+              Content-Length: 157
+              Connection: keep-alive
+              
+              {
+                "id": "123456",
+                "name": "John",
+                "email": "john@example.com",
+                "created_at": "2023-06-12T15:30:22Z"
+              }
+/database/select:
+  post:
+    description: Executes a SQL query against a database
+    body:
+      application/json:
+        type: object
+        properties:
+          url:
+            description: The JDBC URL of the database
+            type: string
+            required: true
+          sql:
+            description: The SQL query to execute
+            type: string
+            required: true
+    responses:
+      200:
+        body:
+          application/json:
+            example: |
+              [
+                {
+                  "column1": "value1",
+                  "column2": "value2"
+                },
+                {
+                  "column1": "value3",
+                  "column2": "value4"
+                }
+              ]
+/database/sp:
+  post:
+    description: Executes a stored procedure against a database
+    body:
+      application/json:
+        type: object
+        properties:
+          url:
+            description: The JDBC URL of the database
+            type: string
+            required: true
+          sql:
+            description: The SQL query to execute
+            type: string
+            required: true
+          inputParameters:
+            description: The input parameters for the stored procedure
+            type: object
+            required: false
+          inOutParameters:
+            description: The in-out parameters for the stored procedure
+            type: object
+            required: false
+          outputParameters:
+            description: The output parameters for the stored procedure
+            type: array
+            required: false
+            items:
+              type: object
+              properties:
+                key:
+                  type: string
+                'type':
+                  type: string
+          
+    responses:
+      200:
+        body:
+          application/json:
+            example: |
+              {
+                "output": {
+                  "param3": 123
+                },
+                "updatedInOutParameters": {
+                  "param2": "new_value"
+                }
+              }
+/database/script:
+  post:
+    description: Executes a SQL script against a database
+    body:
+      application/json:
+        type: object
+        properties:
+          url:
+            description: The JDBC URL of the database
+            type: string
+            required: true
+          sql:
+            description: The SQL script to execute
+            type: string
+            required: true
+    responses:
+      200:
+        body:
+          application/json:
+            example: |
+              {
+                "message": "Script executed successfully"
+              }
+    
 
 /ciphertest:
   get:
