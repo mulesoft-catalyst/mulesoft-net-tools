@@ -13,6 +13,9 @@ import java.util.List;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.BufferedWriter;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 public class NetworkUtils {
 
@@ -59,6 +62,37 @@ public class NetworkUtils {
 			command.add(header);
 		}		
 		return execute(new ProcessBuilder(command));
+	}
+
+	public static String curl(String url, String[] headers, Boolean insecure, String body) throws IOException {
+		//-i include protocol headers
+		//-L follow redirects
+		//-k insecure
+		//-E cert status
+		List<String> command = new ArrayList<String>();
+		command.add("curl");
+		if(insecure) command.add("-k");
+		command.add("-i");
+		command.add("-L");
+		command.add(url);
+		for (String header : headers ) {
+			command.add("-H");
+			command.add(header);
+		}
+		Path tempFile = null;
+		try {
+			if(body != null) {
+				tempFile = Files.createTempFile("body", ".txt");
+				Files.write(tempFile, body.getBytes(StandardCharsets.UTF_8));
+				command.add("-d");
+				command.add("@" + tempFile.toAbsolutePath());
+			}
+			return execute(new ProcessBuilder(command));
+		}finally {
+            if (tempFile != null && Files.exists(tempFile.toAbsolutePath())) {
+                Files.delete(tempFile.toAbsolutePath());
+            }
+		}		
 	}
 
 	public static String testConnect(String host, String port) {
