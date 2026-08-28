@@ -1,233 +1,109 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
-	xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting"
 	xmlns:spring="http://www.mulesoft.org/schema/mule/spring"
+	xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting"
 	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
 	xmlns="http://www.mulesoft.org/schema/mule/core"
-	xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
 	xmlns:http="http://www.mulesoft.org/schema/mule/http"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd 
-http://www.mulesoft.org/schema/mule/spring http://www.mulesoft.org/schema/mule/spring/current/mule-spring.xsd
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
 http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd
+http://www.mulesoft.org/schema/mule/spring http://www.mulesoft.org/schema/mule/spring/current/mule-spring.xsd
 http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
 
-	<flow name="ui" doc:id="94b97777-bd63-4abb-8093-a5c8ac97aa17">
-		<http:listener doc:name="Listener"
-			doc:id="7e20b485-577c-4530-b2b1-66b6a84d5694" config-ref="https"
-			path="/*" outputMimeType="text/html" />
-		<http:basic-security-filter
-			doc:name="Basic security filter"
-			doc:id="cb77f47e-923a-4195-86fc-23bbf2f01311" realm="mule" />
-		<spring:authorization-filter
-			requiredAuthorities="ROLE_ADMIN" />
-		<ee:transform doc:name="Transform Message"
-			doc:id="610d96e5-97f6-407d-ab81-fa234a5794bc">
-			<ee:message>
-				<ee:set-payload
-					resource="dwl/setWebResourcePayload.dwl" />
-			</ee:message>
-			<ee:variables>
-				<ee:set-variable
-					resource="dwl/setWebResourceMimeType.dwl" variableName="mimeType" />
-			</ee:variables>
-		</ee:transform>
-		<choice doc:name="Which MIME type?"
-			doc:id="7fa94994-1832-4b21-b557-691274259e46">
-			<when expression='#[vars.mimeType == "css"]'>
-				<set-payload value="#[payload]"
-					doc:name="Set MIME type as CSS"
-					doc:id="d8334850-64ab-448a-abe3-1611772f58b8" mimeType="text/css" />
-			</when>
-			<when expression='#[vars.mimeType == "js"]'>
-				<set-payload value="#[payload]"
-					doc:name="Set MIME type as JavaScript"
-					doc:id="9595f13e-4c58-4707-9818-c3bcc1d33a0a"
-					mimeType="application/javascript" />
-			</when>
-			<otherwise>
-				<set-payload value="#[payload]"
-					doc:name="Set MIME type as HTML"
-					doc:id="1e21a771-c190-40db-984f-9805208c3ca2" mimeType="text/html" />
-			</otherwise>
-		</choice>
-	</flow>
 	<flow name="net-tools-main"
-		doc:id="6f86a93f-9de9-4cf8-b092-b6a4b23c42f4">
-		<http:listener config-ref="https" path="/api/*">
+		doc:id="6f86a93f-9de9-4cf8-b092-b6a4b23c42f4" initialState="${httpListener}">
+		<http:listener config-ref="http" path="/*">
 			<http:response
 				statusCode="#[vars.httpStatus default 200]">
-				<http:headers>#[vars.outboundHeaders default {}]</http:headers>
 			</http:response>
 			<http:error-response
-				statusCode="#[vars.httpStatus default 500]">
+				statusCode='#[if (error.errorType.namespace == "HTTP" and error.errorType.identifier == "BASIC_AUTHENTICATION") 401 else vars.httpStatus default 500]'>
 				<http:body>#[payload]</http:body>
-				<http:headers>#[vars.outboundHeaders default {}]</http:headers>
+				<http:headers>#[if (error.errorType.namespace == "HTTP" and error.errorType.identifier == "BASIC_AUTHENTICATION") {"WWW-Authenticate": "Basic realm=\"mule\""} else {}]</http:headers>
 			</http:error-response>
 		</http:listener>
 		<http:basic-security-filter doc:name="Basic security filter" realm="mule" />
+		<spring:authorization-filter requiredAuthorities="ROLE_ADMIN" />
 		<logger level="INFO"
 			message='#["$(attributes.scheme default "") $(attributes.method default "") $(attributes.requestUri default "")"]'
 			doc:name="Log Endpoint" />
-		<apikit:router config-ref="net-tools-config" />
-        <error-handler>
-            <on-error-propagate type="APIKIT:BAD_REQUEST">
-                <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
-                    <ee:message>
-                        <ee:set-payload><![CDATA[%dw 2.0
-output application/json
----
-{message: "Bad request"}]]></ee:set-payload>
-                    </ee:message>
-                    <ee:variables>
-                        <ee:set-variable variableName="httpStatus">400</ee:set-variable>
-                    </ee:variables>
-                </ee:transform>
-            </on-error-propagate>
-            <on-error-propagate type="APIKIT:NOT_FOUND">
-                <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
-                    <ee:message>
-                        <ee:set-payload><![CDATA[%dw 2.0
-output application/json
----
-{message: "Resource not found"}]]></ee:set-payload>
-                    </ee:message>
-                    <ee:variables>
-                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
-                    </ee:variables>
-                </ee:transform>
-            </on-error-propagate>
-            <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED">
-                <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
-                    <ee:message>
-                        <ee:set-payload><![CDATA[%dw 2.0
-output application/json
----
-{message: "Method not allowed"}]]></ee:set-payload>
-                    </ee:message>
-                    <ee:variables>
-                        <ee:set-variable variableName="httpStatus">405</ee:set-variable>
-                    </ee:variables>
-                </ee:transform>
-            </on-error-propagate>
-            <on-error-propagate type="APIKIT:NOT_ACCEPTABLE">
-                <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
-                    <ee:message>
-                        <ee:set-payload><![CDATA[%dw 2.0
-output application/json
----
-{message: "Not acceptable"}]]></ee:set-payload>
-                    </ee:message>
-                    <ee:variables>
-                        <ee:set-variable variableName="httpStatus">406</ee:set-variable>
-                    </ee:variables>
-                </ee:transform>
-            </on-error-propagate>
-            <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
-                <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
-                    <ee:message>
-                        <ee:set-payload><![CDATA[%dw 2.0
-output application/json
----
-{message: "Unsupported media type"}]]></ee:set-payload>
-                    </ee:message>
-                    <ee:variables>
-                        <ee:set-variable variableName="httpStatus">415</ee:set-variable>
-                    </ee:variables>
-                </ee:transform>
-            </on-error-propagate>
-            <on-error-propagate type="APIKIT:NOT_IMPLEMENTED">
-                <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
-                    <ee:message>
-                        <ee:set-payload><![CDATA[%dw 2.0
-output application/json
----
-{message: "Not Implemented"}]]></ee:set-payload>
-                    </ee:message>
-                    <ee:variables>
-                        <ee:set-variable variableName="httpStatus">501</ee:set-variable>
-                    </ee:variables>
-                </ee:transform>
-            </on-error-propagate>
-        </error-handler>
-    </flow>
-	<flow name="get:\curl:net-tools-config">
-		<ee:transform doc:name="Transform Message" doc:id="c96eaddb-f56e-4f1a-81ff-ec15df7cb6d6" >
-			<ee:message >
-				<ee:set-payload ><![CDATA[%dw 2.0
+		<choice doc:name="API or UI">
+			<when expression='#[attributes.requestPath == "/api/tools" and attributes.method == "POST"]'>
+				<ee:transform doc:name="Run tool operation" doc:id="c96eaddb-f56e-4f1a-81ff-ec15df7cb6d6">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
 output application/java
 import java!com::mulesoft::tool::network::NetworkUtils
+var op = payload.operation default ""
+var headers = (payload.headers default []) as Array<String>
+var insecure = (payload.insecure default false) as Boolean
+var noProgressMeter = (payload.noProgressMeter default false) as Boolean
+var connectTimeout = payload.connectTimeout default null
+var maxTime = payload.maxTime default null
+var forwardProxy = (payload.forwardProxy default "") as String
+var proxyInsecure = (payload.proxyInsecure default false) as Boolean
+var curlOptions = {
+	insecure: insecure,
+	noProgressMeter: noProgressMeter,
+	connectTimeout: connectTimeout,
+	maxTime: maxTime
+}
+var curlProxy = {
+	url: forwardProxy,
+	insecure: proxyInsecure
+}
+var targetMethod = upper(payload.targetMethod default "GET")
+var operations = ["ping", "traceroute", "socket", "dns", "curl", "certest", "ciphertest"]
+fun blank(value) = isEmpty((value default "") as String)
+var errorMessage =
+	if (blank(op)) "Missing operation"
+	else if (!(operations contains op)) "Unsupported operation: " ++ op
+	else if ((["ping", "traceroute", "socket", "dns", "certest", "ciphertest"] contains op) and blank(payload.host)) "Missing host"
+	else if ((["socket", "certest", "ciphertest"] contains op) and blank(payload.port)) "Missing port"
+	else if (op == "curl" and blank(payload.url)) "Missing url"
+	else if (op == "curl" and !(["GET", "POST"] contains targetMethod)) "Unsupported targetMethod: " ++ targetMethod
+	else null
 ---
-NetworkUtils::curl(attributes.queryParams.url, attributes.queryParams.*header default [], attributes.queryParams.insecure as Boolean)]]></ee:set-payload>
+if (errorMessage != null)
+	errorMessage
+else
+	op match {
+		case "ping" -> NetworkUtils::ping(payload.host)
+		case "traceroute" -> NetworkUtils::traceRoute(payload.host)
+		case "socket" -> NetworkUtils::testConnect(payload.host, payload.port)
+		case "dns" -> NetworkUtils::resolveIPs(payload.host, payload.dnsServer default "")
+		case "certest" -> NetworkUtils::certest(payload.host, payload.port)
+		case "ciphertest" -> NetworkUtils::cipherTest(payload.host, payload.port)
+		case "curl" -> if (targetMethod == "POST")
+				NetworkUtils::curl(payload.url, headers, payload.body default "", curlOptions, curlProxy)
+			else
+				NetworkUtils::curl(payload.url, headers, null, curlOptions, curlProxy)
+		else -> errorMessage
+	}]]></ee:set-payload>
 			</ee:message>
-		</ee:transform>
-    </flow>
-    <flow name="get:\dns:net-tools-config">
-        <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd" doc:id="2eb37294-21d7-412a-8ab6-8da73008b111">
-            <ee:message>
-                <ee:set-payload><![CDATA[%dw 2.0
+			<ee:variables>
+				<ee:set-variable variableName="httpStatus"><![CDATA[%dw 2.0
 output application/java
-import java!com::mulesoft::tool::network::NetworkUtils
+var op = payload.operation default ""
+var targetMethod = upper(payload.targetMethod default "GET")
+var operations = ["ping", "traceroute", "socket", "dns", "curl", "certest", "ciphertest"]
+fun blank(value) = isEmpty((value default "") as String)
+var hasError =
+	blank(op)
+	or !(operations contains op)
+	or ((["ping", "traceroute", "socket", "dns", "certest", "ciphertest"] contains op) and blank(payload.host))
+	or ((["socket", "certest", "ciphertest"] contains op) and blank(payload.port))
+	or (op == "curl" and blank(payload.url))
+	or (op == "curl" and !(["GET", "POST"] contains targetMethod))
 ---
-NetworkUtils::resolveIPs(attributes.queryParams.host, attributes.queryParams.dnsServer default "")]]></ee:set-payload>
-            </ee:message>
-        </ee:transform>
-    </flow>
-    <flow name="get:\ping:net-tools-config">
-		<ee:transform doc:name="Transform Message" doc:id="4042b6d3-cc6a-4fae-ae4c-ea39b6650dbe" >
-			<ee:message >
-				<ee:set-payload ><![CDATA[%dw 2.0
-output application/java
-import java!com::mulesoft::tool::network::NetworkUtils
----
-NetworkUtils::ping(attributes.queryParams.host)]]></ee:set-payload>
-			</ee:message>
-		</ee:transform>
-    </flow>
-    <flow name="get:\socket:net-tools-config">
-        <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd" doc:id="38147a29-0fe5-47f2-ba74-135f9392ecd3">
-            <ee:message>
-                <ee:set-payload><![CDATA[%dw 2.0
-output application/java
-import java!com::mulesoft::tool::network::NetworkUtils
----
-NetworkUtils::testConnect(attributes.queryParams.host, attributes.queryParams.port)]]></ee:set-payload>
-            </ee:message>
-        </ee:transform>
-    </flow>
-    <flow name="get:\certest:net-tools-config" doc:id="8e725dad-59c4-4713-9771-91a850e9ce9d" >
-		<ee:transform doc:name="Transform Message" doc:id="70af9c23-b034-40fc-ab42-7781c55b85e3" >
-			<ee:message >
-				<ee:set-payload ><![CDATA[%dw 2.0
-output application/java
-import java!com::mulesoft::tool::network::NetworkUtils
----
-NetworkUtils::certest(attributes.queryParams.host, attributes.queryParams.port)]]></ee:set-payload>
-			</ee:message>
-		</ee:transform>
-	</flow>
-	<flow name="get:\ciphertest:net-tools-config" doc:id="349ff8fc-6032-4d79-85c9-5d0c4a59e035" >
-		<ee:transform doc:name="Transform Message" doc:id="690960a8-0545-4d52-ab77-c170ff06a27d" >
-			<ee:message >
-				<ee:set-payload ><![CDATA[%dw 2.0
-output application/java
-import java!com::mulesoft::tool::network::NetworkUtils
----
-NetworkUtils::cipherTest(attributes.queryParams.host, attributes.queryParams.port)]]></ee:set-payload>
-			</ee:message>
-		</ee:transform>
-	</flow>
-	<flow name="get:\traceroute:net-tools-config">
-        <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="
-http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
-http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd" doc:id="a006967e-8161-45f9-af3b-d1f3386ae267">
-            <ee:message>
-                <ee:set-payload><![CDATA[%dw 2.0
-output application/java
-import java!com::mulesoft::tool::network::NetworkUtils
----
-NetworkUtils::traceRoute(attributes.queryParams.host)]]></ee:set-payload>
-            </ee:message>
-        </ee:transform>
+if (hasError) 400 else 200]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</when>
+			<otherwise>
+				<flow-ref name="serve-ui" />
+			</otherwise>
+		</choice>
     </flow>
 </mule>
