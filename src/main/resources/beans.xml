@@ -9,12 +9,24 @@
     http://www.springframework.org/schema/security
     http://www.springframework.org/schema/security/spring-security.xsd">
 
+  <!-- 1. Same user-service as before, but now a standalone bean (not nested in the provider) -->
+  <ss:user-service id="userService">
+    <ss:user name="${user}" password="{noop}${pass}" authorities="ROLE_ADMIN" />
+  </ss:user-service>
+
+  <!-- 2. Provider that checks credentials against that user-service -->
+  <bean id="daoProvider"
+        class="org.springframework.security.authentication.dao.DaoAuthenticationProvider">
+    <property name="userDetailsService" ref="userService"/>
+  </bean>
+
+  <!-- 3. Your lockout wrapper around the DAO provider -->
+  <bean id="lockoutProvider" class="com.mulesoft.sec.LockoutAuthenticationProvider">
+    <constructor-arg ref="daoProvider"/>
+  </bean>
+
+  <!-- 4. The authentication manager uses the wrapper -->
   <ss:authentication-manager alias="authenticationManager">
-    <ss:authentication-provider>
-      <ss:user-service id="userService">
-		<!-- Spring Framework 5.x with plain text passwords requires {noop} prefix for the NoOpPasswordEncoder. -->
-        <ss:user name="${user}" password="{noop}${pass}" authorities="ROLE_ADMIN" />
-      </ss:user-service>
-    </ss:authentication-provider>
+    <ss:authentication-provider ref="lockoutProvider"/>
   </ss:authentication-manager>
 </beans>
