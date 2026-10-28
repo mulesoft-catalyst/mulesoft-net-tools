@@ -30,8 +30,8 @@ The UI is protected by Basic Authentication, and the default credentials are lis
 # Configuration
 The properties below can be set on the app to override the default settings.  The proper ports must be set to accommodate load balancer and VPC firewall rule settings.  The default settings are for the CloudHub shared load balancer HTTP endpoint.
 
-- `user`: User name for login.  Defaults to `vpc-tools`
-- `pass`: Password for login.  Defaults to `SomePass`
+- `user`: User name for login.
+- `pass`: Password for login.
 - `httpPort`: Sets the listener port for HTTP.  Defaults to `8081`
 - `httpsPort`: Sets the listener port for HTTPS.  Defaults to `8082`
 - `httpListener`: The running state of the HTTP endpoint flows.  Defaults to `started`.  Options: `started` or `stopped`.  Stop this to disable HTTP endpoint on CloudHub 1.0 or non-RTF infrastructure.  This doesn't affect RTF or CloudHub 2.0 because only a single HTTP port is used.
