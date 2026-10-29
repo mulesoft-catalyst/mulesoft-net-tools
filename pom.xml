@@ -13,6 +13,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <app.runtime>4.9.0</app.runtime>
+        <spring.module.version>2.1.0</spring.module.version>
         <spring.version>5.3.37</spring.version>
         <spring-security.version>5.8.13</spring-security.version>
         <mule.maven.plugin.version>4.10.3</mule.maven.plugin.version>
@@ -105,7 +106,7 @@
         <dependency>
             <groupId>org.mule.modules</groupId>
             <artifactId>mule-spring-module</artifactId>
-            <version>1.4.0</version>
+            <version>${spring.module.version}</version>
             <classifier>mule-plugin</classifier>
         </dependency>
     </dependencies>

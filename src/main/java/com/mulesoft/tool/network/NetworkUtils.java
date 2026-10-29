@@ -7,17 +7,32 @@ import java.io.SequenceInputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URLEncoder;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+
+import javax.naming.directory.InvalidAttributeValueException;
+
+// import org.slf4j.Logger;
+// import org.slf4j.LoggerFactory;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.BufferedWriter;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 public class NetworkUtils {
 
 	private static final String ERROR_HOST_PAT = "Error: '%s' is not a valid hostname or IP address.";
 	private static final String ERROR_PORT_PAT = "Error: '%s' is not a valid port number (must be an integer between 1 and 65535).";
+    // private static final Logger log = LoggerFactory.getLogger(NetworkUtils.class);
 
 	public static String ping(String host) throws Exception {
 		if (!isValidHost(host)) {
@@ -55,25 +70,90 @@ public class NetworkUtils {
 		}
 	}
 
-	public static String curl(String url, String[] headers, Boolean insecure) throws IOException {
+	public static String curl(String url, String[] headers, String body, Map<String, Object> options, Map<String, Object> proxy) throws IOException {
+		Path tempFile = null;
+
+		try {
+			List<String> command = buildCurlCommand(url, headers, options, proxy);
+			if(body != null) {
+				tempFile = Files.createTempFile("body", ".txt");
+				Files.write(tempFile, body.getBytes(StandardCharsets.UTF_8));
+				command.add("-d");
+				command.add("@" + tempFile.toAbsolutePath());
+			}
+			return execute(new ProcessBuilder(command));
+		} catch (InvalidAttributeValueException iave) {
+			return iave.getExplanation();
+		} catch (NumberFormatException nfe){
+			return "Time is not a number";
+		}finally {
+            if (tempFile != null && Files.exists(tempFile.toAbsolutePath())) {
+                Files.delete(tempFile.toAbsolutePath());
+            }
+		}		
+	}
+
+	private static List<String> buildCurlCommand(String url, String[] headers, Map<String, Object> options, Map<String, Object> proxy) throws InvalidAttributeValueException {
 		//-i include protocol headers
 		//-L follow redirects
 		//-k insecure
-		//-E cert status
+		//--no-progress-meter suppress progress output
+		//--connect-timeout maximum time allowed for connection
+		//--max-time maximum total time allowed for the request
+		//-x use the specified forward proxy
+		//--proxy-insecure allow insecure TLS connections to HTTPS proxies
 		List<String> command = new ArrayList<String>();
+		String connectTimeout = stringOption(options, "connectTimeout");
+		String forwardProxy = stringOption(proxy, "url");
+		String maxTime = stringOption(options, "maxTime");
 		command.add("curl");
-		if(insecure) command.add("-k");
+		if(booleanOption(options, "noProgressMeter")) command.add("--no-progress-meter");
+		if(booleanOption(options, "insecure")) command.add("-k");
+		if(connectTimeout != null && !connectTimeout.trim().isEmpty()) {
+			command.add("--connect-timeout");
+			command.add(Integer.toUnsignedString(Integer.parseInt(connectTimeout.trim())));
+		}
+		if(maxTime != null && !maxTime.trim().isEmpty()) {
+			command.add("--max-time");
+			command.add(Integer.toUnsignedString(Integer.parseInt(maxTime.trim())));
+		}
+		if(booleanOption(proxy, "insecure")) command.add("--proxy-insecure");
+		if(forwardProxy != null && !forwardProxy.trim().isEmpty()) {
+			if(!isValidUrl(forwardProxy.trim())){
+				throw new InvalidAttributeValueException("Error: '" + forwardProxy + "' is not a valid URL.");
+			}
+			command.add("-x");
+			command.add(forwardProxy.trim());
+		}
 		command.add("-i");
 		command.add("-L");
 		command.add(url);
 		for (String header : headers ) {
 			if (!isValidHeader(header)) {
-				return "Error: '" + header + "' is not a valid HTTP header value.";
+				throw new InvalidAttributeValueException("Error: '" + header + "' is not a valid HTTP header value.");
 			}
 			command.add("-H");
 			command.add(header);
 		}
-		return execute(new ProcessBuilder(command));
+		return command;
+	}
+
+	private static boolean booleanOption(Map<String, Object> options, String key) {
+		if(options == null) {
+			return false;
+		}
+		Object option = options.get(key);
+		if(option instanceof Boolean) {
+			return (Boolean) option;
+		}
+		return option != null && Boolean.valueOf(option.toString());
+	}
+
+	private static String stringOption(Map<String, Object> options, String key) {
+		if(options == null || options.get(key) == null) {
+			return "";
+		}
+		return options.get(key).toString();
 	}
 
 	public static String testConnect(String host, String port) {
@@ -81,7 +161,7 @@ public class NetworkUtils {
 			return String.format(ERROR_HOST_PAT, host);
 		}
 		if (!isValidPort(port)) {
-			return String.format(ERROR_HOST_PAT, port);
+			return String.format(ERROR_PORT_PAT, port);
 		}
 		long startTime = System.nanoTime();
 		long totalTime = System.nanoTime();
@@ -129,7 +209,7 @@ public class NetworkUtils {
 			return String.format(ERROR_HOST_PAT, host);
 		}
 		if (!isValidPort(port)) {
-			return String.format(ERROR_HOST_PAT, port);
+			return String.format(ERROR_PORT_PAT, port);
 		}
 		return execute(new ProcessBuilder("openssl", "s_client", "-showcerts", "-servername", host, "-connect", host+":"+port));
 	}
@@ -139,7 +219,7 @@ public class NetworkUtils {
 			return String.format(ERROR_HOST_PAT, host);
 		}
 		if (!isValidPort(port)) {
-			return String.format(ERROR_HOST_PAT, port);
+			return String.format(ERROR_PORT_PAT, port);
 		}
 		String remoteEndpointSupportedCiphers = "List of supported ciphers:\n\n";
 		String[] openSslAvailableCiphers = execute(new ProcessBuilder("openssl","ciphers","ALL:!eNULL")).split(":");
@@ -273,4 +353,55 @@ public class NetworkUtils {
 		return name.matches("[a-zA-Z0-9!#$%&'*+\\-.^_`|~]+");
 	}
 
+	// Define supported protocols in lowercase
+    private static final Set<String> ALLOWED_SCHEMES = Set.of(
+        "http", 
+        "https", 
+        "socks", 
+        "socks4", 
+        "socks4a", 
+        "socks5", 
+        "socks5h"
+    );
+
+    public static boolean isValidUrl(String urlString) {
+        if (urlString == null || urlString.isBlank()) {
+            return false;
+        }
+
+        try {
+            URI uri = new URI(urlString.trim());
+
+            // 1. Ensure a scheme exists and is allowed
+            String scheme = uri.getScheme();
+            if (scheme == null || !ALLOWED_SCHEMES.contains(scheme.toLowerCase(Locale.ROOT))) {
+                return false;
+            }
+
+            // 2. Reject non-hierarchical/opaque URIs (e.g., "mailto:a@b.com" or "socks5:invalid")
+            if (uri.isOpaque()) {
+                return false;
+            }
+
+            // 3. Ensure a valid host/authority exists
+            // For proxies and web URLs, host is required (e.g., "socks5://127.0.0.1:1080")
+            String host = uri.getHost();
+            if (host == null || host.isBlank()) {
+                // Fallback: Check if authority exists when host parsing fails (e.g., user:pass@host:port)
+                if (uri.getAuthority() == null || uri.getAuthority().isBlank()) {
+                    return false;
+                }
+            }
+
+            // 4. Validate port range if specified
+            int port = uri.getPort();
+            if (port != -1 && (port < 1 || port > 65535)) {
+                return false;
+            }
+
+            return true;
+        } catch (URISyntaxException e) {
+            return false;
+        }
+    }
 }

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+	<flow name="serve-ui">
+		<ee:transform doc:name="Set web resource payload">
+			<ee:message>
+				<ee:set-payload
+					resource="dwl/setWebResourcePayload.dwl" />
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable
+					resource="dwl/setWebResourceMimeType.dwl" variableName="mimeType" />
+			</ee:variables>
+		</ee:transform>
+		<choice doc:name="Which MIME type?">
+			<when expression='#[vars.mimeType == "css"]'>
+				<set-payload value="#[payload]"
+					doc:name="Set MIME type as CSS" mimeType="text/css" />
+			</when>
+			<when expression='#[vars.mimeType == "js"]'>
+				<set-payload value="#[payload]"
+					doc:name="Set MIME type as JavaScript"
+					mimeType="application/javascript" />
+			</when>
+			<otherwise>
+				<set-payload value="#[payload]"
+					doc:name="Set MIME type as HTML" mimeType="text/html" />
+			</otherwise>
+		</choice>
+	</flow>
+</mule>
